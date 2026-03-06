@@ -32,13 +32,18 @@ function initUIRefs() {
 
 socket.on('connect', () => { mySocketId = socket.id; });
 
-// Auto-fill room code from URL ?room=XXXX
-(function checkUrlRoom() {
+// Auto-fill room code from URL ?room=XXXX and restore cached nickname
+(function initLobby() {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (roomFromUrl) {
         const input = document.getElementById('room-code-input');
         if (input) input.value = roomFromUrl.toUpperCase();
+    }
+    const savedName = localStorage.getItem('pass_card_nickname');
+    if (savedName) {
+        const nameInput = document.getElementById('player-name');
+        if (nameInput) nameInput.value = savedName;
     }
 })();
 
@@ -47,6 +52,7 @@ socket.on('connect', () => { mySocketId = socket.id; });
 function createRoom() {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { showLobbyError('请输入你的昵称！'); return; }
+    localStorage.setItem('pass_card_nickname', name);
     const maxPlayers = parseInt(document.getElementById('max-players').value) || 4;
     socket.emit('createRoom', { name, maxPlayers });
 }
@@ -54,6 +60,7 @@ function createRoom() {
 function joinRoom() {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { showLobbyError('请输入你的昵称！'); return; }
+    localStorage.setItem('pass_card_nickname', name);
     const code = document.getElementById('room-code-input').value.trim().toUpperCase();
     if (!code) { showLobbyError('请输入房间号！'); return; }
     socket.emit('joinRoom', { code, name });
