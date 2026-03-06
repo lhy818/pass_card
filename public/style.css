@@ -317,22 +317,105 @@ body::after {
     color: #1e293b;
 }
 
-.card.face-down {
-    background:
-        repeating-linear-gradient(135deg,
-            rgba(52, 211, 153, 0.3),
-            rgba(52, 211, 153, 0.3) 8px,
-            rgba(15, 23, 42, 0.9) 8px,
-            rgba(15, 23, 42, 0.9) 16px);
-    border: 2px solid var(--glass-border);
-    color: transparent !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(52, 211, 153, 0.05);
+/* Card corner labels */
+.card-corner {
+    position: absolute;
+    font-size: 11px;
+    line-height: 1.1;
+    font-weight: 700;
+    text-align: center;
 }
 
-.card.face-down::before,
-.card.face-down::after {
-    display: none !important;
+.card-corner-tl {
+    top: 3px;
+    left: 4px;
 }
+
+.card-corner-br {
+    bottom: 3px;
+    right: 4px;
+    transform: rotate(180deg);
+}
+
+/* Pip container */
+.card-pips {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* Individual pip */
+.card-pip {
+    position: absolute;
+    font-size: 14px;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+}
+
+.card-pip.pip-flip {
+    transform: translate(-50%, -50%) rotate(180deg);
+}
+
+/* Face card letter (J/Q/K) */
+.card-face-letter {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    font-weight: 800;
+    font-family: 'Playfair Display', serif;
+    opacity: 0.85;
+}
+
+.card.face-down {
+    background: #1a2756;
+    border: 2.5px solid #c8b87c;
+    color: transparent !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* Outer decorative border */
+.card.face-down::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1.5px solid rgba(200, 184, 124, 0.6);
+    border-radius: 3px;
+    background:
+        /* Center diamond */
+        linear-gradient(45deg, transparent 42%, rgba(200, 184, 124, 0.25) 42%, rgba(200, 184, 124, 0.25) 58%, transparent 58%),
+        linear-gradient(-45deg, transparent 42%, rgba(200, 184, 124, 0.25) 42%, rgba(200, 184, 124, 0.25) 58%, transparent 58%),
+        /* Ornate grid pattern */
+        repeating-linear-gradient(0deg, transparent, transparent 8px, rgba(200, 184, 124, 0.08) 8px, rgba(200, 184, 124, 0.08) 9px),
+        repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(200, 184, 124, 0.08) 8px, rgba(200, 184, 124, 0.08) 9px),
+        /* Diagonal filigree */
+        repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(200, 184, 124, 0.06) 6px, rgba(200, 184, 124, 0.06) 7px),
+        repeating-linear-gradient(-45deg, transparent, transparent 6px, rgba(200, 184, 124, 0.06) 6px, rgba(200, 184, 124, 0.06) 7px);
+    display: block !important;
+    z-index: 1;
+}
+
+/* Inner ornate frame + center emblem */
+.card.face-down::after {
+    content: '♠';
+    position: absolute;
+    inset: 8px;
+    border: 1px solid rgba(200, 184, 124, 0.35);
+    border-radius: 2px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: rgba(200, 184, 124, 0.4);
+    text-shadow: 0 0 6px rgba(200, 184, 124, 0.2);
+    z-index: 2;
+    background: radial-gradient(ellipse at center, rgba(200, 184, 124, 0.06) 0%, transparent 60%);
+}
+
+
+
 
 .card.selectable {
     cursor: pointer;

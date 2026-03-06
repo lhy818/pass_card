@@ -7,6 +7,7 @@ let isHost = false;
 let gameState = null; // sanitized state from server
 let selectedCardIndex = -1;
 let lastPhase = null; // track phase changes for SFX triggers
+let lastRoomPlayerCount = 0; // track player count for join SFX
 
 // UI refs
 const UI = {
@@ -114,6 +115,14 @@ function copyShareLink() {
 socket.on('roomUpdate', (data) => {
     currentRoom = data.code;
     isHost = (data.hostId === mySocketId);
+
+    // Play sound when a new player joins
+    const newCount = data.players.length;
+    if (newCount > lastRoomPlayerCount && lastRoomPlayerCount > 0) {
+        if (typeof SFX !== 'undefined') SFX.notifyChime();
+    }
+    lastRoomPlayerCount = newCount;
+
     const container = document.getElementById('room-players-list');
     container.innerHTML = '';
     data.players.forEach(p => {
@@ -217,6 +226,42 @@ function getSuitSymbol(suit) {
     return '';
 }
 
+// Generate authentic pip layout for playing cards
+// Each pip is positioned with (left%, top%) and optional flip
+function generatePipLayout(value, sym) {
+    // Face cards — large centered letter
+    if (['J', 'Q', 'K'].includes(value)) {
+        const labels = { J: 'J', Q: 'Q', K: 'K' };
+        return `<span class="card-face-letter">${labels[value]}</span>`;
+    }
+    // Ace — single large centered pip
+    if (value === 'A') {
+        return `<span class="card-pip" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:28px;">${sym}</span>`;
+    }
+
+    // Pip position maps — [left%, top%, flipped?]
+    // Modeled after standard Bicycle deck layouts
+    const L = 30, R = 70, C = 50; // left, right, center columns
+    const layouts = {
+        '2': [[C, 22], [C, 78, 1]],
+        '3': [[C, 22], [C, 50], [C, 78, 1]],
+        '4': [[L, 22], [R, 22], [L, 78, 1], [R, 78, 1]],
+        '5': [[L, 22], [R, 22], [C, 50], [L, 78, 1], [R, 78, 1]],
+        '6': [[L, 22], [R, 22], [L, 50], [R, 50], [L, 78, 1], [R, 78, 1]],
+        '7': [[L, 22], [R, 22], [L, 50], [R, 50], [C, 36], [L, 78, 1], [R, 78, 1]],
+        '8': [[L, 22], [R, 22], [L, 50], [R, 50], [C, 36], [C, 64, 1], [L, 78, 1], [R, 78, 1]],
+        '9': [[L, 20], [R, 20], [L, 40], [R, 40], [C, 50], [L, 60, 1], [R, 60, 1], [L, 80, 1], [R, 80, 1]],
+        '10': [[L, 20], [R, 20], [C, 30], [L, 40], [R, 40], [L, 60, 1], [R, 60, 1], [C, 70, 1], [L, 80, 1], [R, 80, 1]]
+    };
+
+    const positions = layouts[value];
+    if (!positions) return `<span class="card-pip" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:20px;">${sym}</span>`;
+
+    return positions.map(([x, y, flip]) =>
+        `<span class="card-pip${flip ? ' pip-flip' : ''}" style="left:${x}%;top:${y}%;">${sym}</span>`
+    ).join('');
+}
+
 function renderAllPlayers() {
     if (!gameState) return;
     const container = document.getElementById('players-container');
@@ -304,16 +349,12 @@ function renderCards() {
             } else {
                 el.className = 'card';
                 el.dataset.suit = card.suit;
+                const sym = getSuitSymbol(card.suit);
+                const pips = generatePipLayout(card.value, sym);
                 el.innerHTML = `
-                    <div style="position: absolute; top: 5px; left: 5px; font-size: 14px; line-height: 1;">
-                        ${card.value}<br>${getSuitSymbol(card.suit)}
-                    </div>
-                    <div style="font-size: 36px; display: flex; height: 100%; align-items: center; justify-content: center;">
-                        ${getSuitSymbol(card.suit)}
-                    </div>
-                    <div style="position: absolute; bottom: 5px; right: 5px; font-size: 14px; line-height: 1; transform: rotate(180deg);">
-                        ${card.value}<br>${getSuitSymbol(card.suit)}
-                    </div>
+                    <div class="card-corner card-corner-tl">${card.value}<br>${sym}</div>
+                    <div class="card-pips">${pips}</div>
+                    <div class="card-corner card-corner-br">${card.value}<br>${sym}</div>
                 `;
             }
 
