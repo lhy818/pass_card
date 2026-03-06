@@ -51,7 +51,20 @@
                 <span id="room-code-display"
                     style="font-family:'Outfit',sans-serif; font-size:42px; font-weight:800; letter-spacing:8px; background: linear-gradient(135deg, var(--accent-primary), var(--accent-info)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;"></span>
             </div>
-            <p style="color: var(--text-muted); font-size:14px;">分享这个房间号给朋友，让他们加入！</p>
+            <p style="color: var(--text-muted); font-size:14px;">分享下方链接给朋友，点击即可加入！</p>
+            <div id="share-link-area"
+                style="margin:14px 0; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <input type="text" id="share-link" readonly style="
+                    width:320px; text-align:center; font-size:13px; padding:8px 12px;
+                    background:rgba(255,255,255,0.06); border:1px solid var(--glass-border);
+                    border-radius:var(--radius-sm); color:var(--accent-info); cursor:pointer;
+                    font-family:'Outfit',sans-serif; letter-spacing:0.5px;
+                " onclick="copyShareLink()">
+                <button class="btn" onclick="copyShareLink()" style="
+                    padding:8px 14px; font-size:13px;
+                    background:linear-gradient(135deg, #38bdf8, #0284c7);
+                ">📋 复制</button>
+            </div>
             <div id="room-players-list" style="margin:24px 0;"></div>
             <div id="host-controls" class="hidden"
                 style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">

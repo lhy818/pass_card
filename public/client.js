@@ -31,6 +31,16 @@ function initUIRefs() {
 
 socket.on('connect', () => { mySocketId = socket.id; });
 
+// Auto-fill room code from URL ?room=XXXX
+(function checkUrlRoom() {
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+    if (roomFromUrl) {
+        const input = document.getElementById('room-code-input');
+        if (input) input.value = roomFromUrl.toUpperCase();
+    }
+})();
+
 // ===================== LOBBY =====================
 
 function createRoom() {
@@ -75,6 +85,30 @@ function showRoomWaiting(code) {
     document.getElementById('lobby').classList.add('hidden');
     document.getElementById('room-waiting').classList.remove('hidden');
     document.getElementById('room-code-display').textContent = code;
+
+    // Generate share link
+    const shareUrl = `${window.location.origin}?room=${code}`;
+    const shareLinkInput = document.getElementById('share-link');
+    if (shareLinkInput) shareLinkInput.value = shareUrl;
+
+    // Update browser URL without reload
+    history.replaceState(null, '', `?room=${code}`);
+}
+
+function copyShareLink() {
+    const shareLinkInput = document.getElementById('share-link');
+    if (!shareLinkInput) return;
+    navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+        const btn = shareLinkInput.nextElementSibling;
+        if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = '✅ 已复制';
+            setTimeout(() => { btn.textContent = orig; }, 1500);
+        }
+    }).catch(() => {
+        shareLinkInput.select();
+        document.execCommand('copy');
+    });
 }
 
 socket.on('roomUpdate', (data) => {
