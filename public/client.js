@@ -278,7 +278,7 @@ function renderAllPlayers() {
         if (diff < 0) diff += n;
         const theta = Math.PI / 2 + diff * (2 * Math.PI / n);
 
-        let rx = 40, ry = 35;
+        let rx = 44, ry = 36;
         const left = 50 + Math.cos(theta) * rx;
         const top = 50 + Math.sin(theta) * ry;
 
