@@ -632,7 +632,7 @@ function findRoomBySocket(socketId) {
     return null;
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 server.listen(PORT, () => {
     console.log(`传牌游戏服务器已启动: http://localhost:${PORT}`);
 });
