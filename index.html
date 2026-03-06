@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传牌游戏</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="table">
+        <div class="center-area">
+            <h1 class="game-title">传牌</h1>
+            <div class="rule-display hidden" id="rule-display">
+                目标排名: <strong id="current-target-ranks" style="color: #00ffff;">（未指定）</strong> |
+                玩法: <strong id="current-rule-name">（未指定）</strong> | 倍数: <strong id="current-multiplier"
+                    class="multiplier-text">1</strong> 倍
+            </div>
+            <div class="game-message" id="message">点击"开始游戏"发牌</div>
+            <div class="controls" id="setup-controls" style="margin-bottom: 15px;">
+                <label style="color: white; margin-right: 10px; font-weight: bold;">参与游戏人数 (3-10):</label>
+                <input type="number" id="player-count" min="3" max="10" value="4"
+                    style="font-size: 16px; padding: 5px; width: 60px; text-align: center;">
+            </div>
+            <div id="pre-deal-rank-selection" class="controls hidden"
+                style="margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; justify-content: center;">
+                <label style="color: white; font-weight: bold;">作为输家，请至少指定一名输家（可多选）：</label>
+                <div id="pre-loser-rank-checkboxes"
+                    style="display:flex; flex-wrap:wrap; gap:10px; max-width:400px; justify-content:center;">
+                </div>
+                <button class="btn" style="background: #ff5722; color: white; padding: 6px 12px; font-size: 16px;"
+                    onclick="humanConfirmRankAndDeal()">确定并起手发牌</button>
+            </div>
+            <div class="controls">
+                <button id="btn-start" class="btn">发牌 / 开始新一局</button>
+                <button id="btn-action" class="btn hidden">传牌</button>
+            </div>
+            <div id="rule-selection" class="controls hidden"
+                style="margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button class="btn" style="background: #4caf50; color: white;"
+                        onclick="humanChooseRule('SAN_PI')">三匹</button>
+                    <button class="btn" style="background: #2196f3; color: white;"
+                        onclick="humanChooseRule('TEN_HALF')">10点半</button>
+                    <button class="btn" style="background: #e91e63; color: white;"
+                        onclick="humanChooseRule('LAO_YAN_CAI')">捞腌菜</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic players inserted here -->
+        <div id="players-container"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
