@@ -759,6 +759,20 @@ io.on('connection', (socket) => {
             room.players[idx].wasHost = (room.hostId === socket.id); // remember if they were host
             room.players[idx].name = originalName + ' (断线)';
             room.players[idx].id = `ai_dc_${Date.now()}`;
+
+            // Handle host reassignment if the host disconnected
+            if (room.hostId === socket.id) {
+                const newHost = room.players.find(p => !p.isAI);
+                if (newHost) {
+                    room.hostId = newHost.id;
+                } else {
+                    // No humans left handling
+                    delete rooms[room.code];
+                    broadcastRoomList();
+                    return; // exit the disconnect flow
+                }
+            }
+
             broadcastRoomState(room);
             broadcastGameState(room);
 
