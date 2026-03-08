@@ -557,6 +557,7 @@ io.on('connection', (socket) => {
             spectator.targetSeatIndex = seatIndex;
             socket.emit('spectateTargetApproved', { seatIndex });
             socket.emit('gameStateUpdate', sanitizeGameStateForSpectator(room, spectator));
+            broadcastRoomState(room);
         } else {
             // Request from Human
             io.to(targetPlayer.id).emit('informSpectateRequest', {
@@ -580,6 +581,7 @@ io.on('connection', (socket) => {
         spectator.targetSeatIndex = myPlayer.seatIndex;
         io.to(requesterId).emit('spectateTargetApproved', { seatIndex: myPlayer.seatIndex });
         io.to(requesterId).emit('gameStateUpdate', sanitizeGameStateForSpectator(room, spectator));
+        broadcastRoomState(room);
     });
 
     socket.on('rejectSpectate', ({ requesterId }) => {

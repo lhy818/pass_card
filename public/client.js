@@ -125,7 +125,16 @@ function renderSpectatorList() {
     currentRoomState.spectators.forEach(s => {
         let label = s.name;
         if (s.id === mySocketId) label += ' (你)';
-        html += `<div style="background:rgba(255,152,0,0.1); padding:2px 6px; border-radius:4px; border:1px solid rgba(255,152,0,0.3); color:#ffb74d;">👀 ${label}</div>`;
+
+        let targetText = '';
+        if (s.targetSeatIndex !== undefined && s.targetSeatIndex !== null) {
+            const tgt = currentRoomState.players.find(p => p.seatIndex === s.targetSeatIndex);
+            if (tgt) {
+                targetText = `<span style="color:rgba(255,255,255,0.4); font-size:10px; margin:0 4px;">▶</span><span style="color:var(--accent-info); font-weight:bold;">${tgt.name}</span>`;
+            }
+        }
+
+        html += `<div style="background:rgba(255,152,0,0.1); padding:2px 6px; border-radius:4px; border:1px solid rgba(255,152,0,0.3); color:#ffb74d; display:flex; align-items:center; flex-wrap:wrap;"><span>👀 ${label}</span>${targetText}</div>`;
     });
 
     container.innerHTML = html;
