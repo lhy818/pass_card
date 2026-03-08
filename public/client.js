@@ -71,6 +71,14 @@ function showLobbyError(msg) {
     setTimeout(() => { document.getElementById('lobby-error').textContent = ''; }, 3000);
 }
 
+function showRules() {
+    document.getElementById('rules-modal').classList.remove('hidden');
+    if (typeof SFX !== 'undefined') SFX.buttonClick();
+}
+function closeRules() {
+    document.getElementById('rules-modal').classList.add('hidden');
+}
+
 socket.on('roomCreated', ({ code }) => {
     currentRoom = code;
     isHost = true;

@@ -40,6 +40,90 @@
                 </div>
             </div>
             <div id="lobby-error" style="color: var(--accent-danger); margin-top:14px; font-weight:600;"></div>
+            <div style="margin-top:20px;">
+                <button class="btn" onclick="showRules()" style="
+                    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+                    border: 1px solid var(--glass-border); color: var(--text-muted);
+                    font-size:14px; padding:10px 22px;
+                ">📖 游戏玩法</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== RULES MODAL ==================== -->
+    <div id="rules-modal" class="hidden" style="
+        position:fixed; inset:0; z-index:200;
+        background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+        display:flex; justify-content:center; align-items:center;
+    " onclick="if(event.target===this)closeRules()">
+        <div style="
+            background:var(--glass-bg); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+            border:1px solid var(--glass-border); border-radius:var(--radius-lg);
+            padding:36px 32px; max-width:640px; width:92%; max-height:85vh; overflow-y:auto;
+            box-shadow:0 24px 80px rgba(0,0,0,0.5); color:var(--text-primary);
+            animation: lobby-enter 0.4s cubic-bezier(0.16,1,0.3,1) both;
+        ">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2
+                    style="margin:0; font-family:'Playfair Display',serif; background:linear-gradient(135deg,var(--accent-primary),var(--accent-info)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">
+                    📖 游戏玩法</h2>
+                <button onclick="closeRules()"
+                    style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; padding:4px 8px;">✕</button>
+            </div>
+
+            <div style="font-size:14px; line-height:2; color:var(--text-primary);">
+
+                <h3 style="color:var(--accent-primary); margin:16px 0 8px; font-size:16px;">🎯 游戏目标</h3>
+                <p>传牌是一款多人喝酒惩罚纸牌游戏。每局由上局输家指定"第几大输"，所有人各拿2张牌，轮流传牌后比大小，排名对应的玩家即为本局输家，需要接受惩罚（喝酒）。</p>
+
+                <h3 style="color:var(--accent-primary); margin:16px 0 8px; font-size:16px;">🔄 游戏流程</h3>
+                <ol style="padding-left:20px;">
+                    <li><strong>指定名次</strong> — 输家指定本轮"第几大喝"（可多选）</li>
+                    <li><strong>发牌</strong> — 每人发2张牌</li>
+                    <li><strong>传牌</strong> — 从输家开始，按顺序每人选一张牌传给下家</li>
+                    <li><strong>选规则</strong> — 最后拿到牌的人从三种玩法中选一种</li>
+                    <li><strong>结算</strong> — 根据所选规则比较大小，排名对应者即为输家</li>
+                </ol>
+
+                <h3 style="color:var(--accent-warm); margin:20px 0 8px; font-size:16px;">🃏 三种玩法</h3>
+
+                <div
+                    style="background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.2); border-radius:var(--radius-sm); padding:12px 16px; margin:8px 0;">
+                    <strong style="color:var(--accent-primary);">三匹</strong>
+                    <p style="margin:4px 0 0;">比牌面大小。牌型从大到小：<br>
+                        <span style="color:var(--accent-info);">对子</span> ＞ 同花顺 ＞ 同花 ＞ 顺子 ＞ 高牌<br>
+                        同牌型比点数，点数相同比花色（♠＞♥＞♣＞♦）<br>
+                        <em style="color:var(--accent-danger);">出对子 → 倍数+1</em>
+                    </p>
+                </div>
+
+                <div
+                    style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.2); border-radius:var(--radius-sm); padding:12px 16px; margin:8px 0;">
+                    <strong style="color:var(--accent-info);">10点半</strong>
+                    <p style="margin:4px 0 0;">两张牌点数相加，最接近10.5的最大。<br>
+                        A=1, 2-10按面值, <span style="color:var(--accent-info);">J/Q/K=0.5</span><br>
+                        超过10.5为暴牌（最小）<br>
+                        <em style="color:var(--accent-danger);">恰好10.5 → 倍数+1</em>
+                    </p>
+                </div>
+
+                <div
+                    style="background:rgba(244,114,182,0.08); border:1px solid rgba(244,114,182,0.2); border-radius:var(--radius-sm); padding:12px 16px; margin:8px 0;">
+                    <strong style="color:#f472b6;">捞腌菜</strong>
+                    <p style="margin:4px 0 0;">两张牌点数相加，取个位数比大小。<br>
+                        A=1, 2-9按面值, <span style="color:#f472b6;">10/J/Q/K=0</span><br>
+                        个位数9最大，0为"睡着"（最小）<br>
+                        <em style="color:var(--accent-danger);">非0且对子或同花 = "双腌" → 倍数+1</em>
+                    </p>
+                </div>
+
+                <h3 style="color:var(--accent-danger); margin:16px 0 8px; font-size:16px;">⚡ 倍数惩罚</h3>
+                <p>触发特殊牌型（对子/10点半/双腌）的玩家会使全局倍数累加，输家最终惩罚 = 基础惩罚 × 总倍数。<br>
+                    触发者如果自己输了，还会额外+1倍惩罚！</p>
+
+                <h3 style="color:var(--accent-primary); margin:16px 0 8px; font-size:16px;">💡 断线重连</h3>
+                <p>如果意外掉线，用<strong>相同昵称 + 相同房间号</strong>重新加入即可恢复座位。</p>
+            </div>
         </div>
     </div>
 
