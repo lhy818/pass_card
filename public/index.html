@@ -314,6 +314,34 @@
         </div>
     </div>
 
+    <!-- ==================== SPECTATE REQUEST MODAL ==================== -->
+    <div id="spectate-request-modal" class="hidden" style="
+        position:fixed; inset:0; z-index:200;
+        background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+        display:flex; justify-content:center; align-items:center;
+    ">
+        <div style="
+            background:var(--glass-bg); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+            border:1px solid var(--glass-border); border-radius:var(--radius-lg);
+            padding:32px; max-width:380px; width:90%; text-align:center;
+            box-shadow:0 24px 80px rgba(0,0,0,0.5);
+            animation: lobby-enter 0.4s cubic-bezier(0.16,1,0.3,1) both;
+        ">
+            <div style="font-size:48px; margin-bottom:16px;">👁️</div>
+            <h3 style="margin:0 0 16px 0; color:var(--text-primary); font-size:20px;">观战请求</h3>
+            <p style="color:var(--text-muted); font-size:15px; margin-bottom:24px; line-height:1.5;">
+                <strong id="sr-name" style="color:var(--accent-info); font-size:18px;"></strong><br>
+                申请观看你的手牌
+            </p>
+            <div style="display:flex; justify-content:center; gap:12px;">
+                <button class="btn"
+                    style="flex:1; background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); color:var(--text-muted);"
+                    onclick="rejectSpectate()">拒绝</button>
+                <button class="btn" style="flex:1; background:linear-gradient(135deg, #38bdf8, #0284c7);"
+                    onclick="approveSpectate()">同意</button>
+            </div>
+        </div>
+    </div>
     <script src="sound.js"></script>
     <script src="client.js"></script>
 </body>

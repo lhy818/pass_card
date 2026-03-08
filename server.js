@@ -246,20 +246,22 @@ function broadcastGameState(room) {
     });
     // Send spectator view (showdown-like: all cards visible)
     (room.spectators || []).forEach(s => {
-        const state = sanitizeGameStateForSpectator(room);
+        const state = sanitizeGameStateForSpectator(room, s);
         io.to(s.id).emit('gameStateUpdate', state);
     });
 }
 
-function sanitizeGameStateForSpectator(room) {
+function sanitizeGameStateForSpectator(room, spectator) {
     const gs = room.gameState;
     if (!gs) return null;
+    const isShowdown = gs.phase === 'SHOWDOWN';
     const playersData = {};
     for (const [seatStr, pData] of Object.entries(gs.players)) {
+        const isTarget = (spectator && spectator.targetSeatIndex !== undefined && spectator.targetSeatIndex == seatStr);
         playersData[seatStr] = {
-            cards: pData.cards,
+            cards: (isTarget || isShowdown) ? pData.cards : pData.cards.map(() => null),
             totalLosses: pData.totalLosses || 0,
-            handName: pData.handName || ''
+            handName: isShowdown ? pData.handName : ''
         };
     }
     const playerNames = {};
@@ -278,10 +280,11 @@ function sanitizeGameStateForSpectator(room) {
         turnCircle: gs.turnCircle,
         mySeatIndex: -1,
         isSpectator: true,
+        spectatingTargetSeat: spectator ? spectator.targetSeatIndex : undefined,
         currentPassFrom: gs.passQueue.length > 0 ? gs.passQueue[0].from : null,
         currentPassTo: gs.passQueue.length > 0 ? gs.passQueue[0].to : null,
         message: gs.message || '',
-        showdownResult: gs.phase === 'SHOWDOWN' ? gs.showdownResult : null,
+        showdownResult: isShowdown ? gs.showdownResult : null,
         ruleNames: { 'SAN_PI': '三匹', 'TEN_HALF': '10点半', 'LAO_YAN_CAI': '捞腌菜' }
     };
 }
@@ -529,14 +532,58 @@ io.on('connection', (socket) => {
         const room = getRoom(code);
         if (!room) { socket.emit('error', { msg: '房间不存在！' }); return; }
         room.spectators = room.spectators || [];
-        room.spectators.push({ id: socket.id, name: name || '观众' });
+        const specObj = { id: socket.id, name: name || '观众', targetSeatIndex: undefined };
+        room.spectators.push(specObj);
         socket.join(code);
         socket.emit('spectateStarted', { code });
         broadcastRoomState(room);
         if (room.gameState) {
-            const state = sanitizeGameStateForSpectator(room);
+            const state = sanitizeGameStateForSpectator(room, specObj);
             socket.emit('gameStateUpdate', state);
         }
+    });
+
+    // ---- REQUEST SPECTATE TARGET ----
+    socket.on('requestSpectateTarget', ({ seatIndex }) => {
+        const room = findSpectatorRoom(socket.id);
+        if (!room) return;
+        const spectator = room.spectators.find(s => s.id === socket.id);
+        if (!spectator) return;
+        const targetPlayer = room.players.find(p => p.seatIndex === seatIndex);
+        if (!targetPlayer) return;
+
+        if (targetPlayer.isAI) {
+            // Auto approve for AI
+            spectator.targetSeatIndex = seatIndex;
+            socket.emit('spectateTargetApproved', { seatIndex });
+            socket.emit('gameStateUpdate', sanitizeGameStateForSpectator(room, spectator));
+        } else {
+            // Request from Human
+            io.to(targetPlayer.id).emit('informSpectateRequest', {
+                requesterId: spectator.id,
+                requesterName: spectator.name,
+                seatIndex
+            });
+            socket.emit('spectateTargetSent');
+        }
+    });
+
+    socket.on('approveSpectate', ({ requesterId }) => {
+        const room = findRoomBySocket(socket.id);
+        if (!room) return;
+        const myPlayer = room.players.find(p => p.id === socket.id);
+        if (!myPlayer) return;
+
+        const spectator = (room.spectators || []).find(s => s.id === requesterId);
+        if (!spectator) return;
+
+        spectator.targetSeatIndex = myPlayer.seatIndex;
+        io.to(requesterId).emit('spectateTargetApproved', { seatIndex: myPlayer.seatIndex });
+        io.to(requesterId).emit('gameStateUpdate', sanitizeGameStateForSpectator(room, spectator));
+    });
+
+    socket.on('rejectSpectate', ({ requesterId }) => {
+        io.to(requesterId).emit('spectateTargetRejected');
     });
 
     // ---- JOIN REQUEST (mid-game) ----

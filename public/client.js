@@ -241,6 +241,42 @@ socket.on('error', ({ msg }) => {
     showLobbyError(msg);
 });
 
+let currentSpectateRequesterId = null;
+
+socket.on('informSpectateRequest', (data) => {
+    currentSpectateRequesterId = data.requesterId;
+    document.getElementById('sr-name').textContent = data.requesterName;
+    document.getElementById('spectate-request-modal').classList.remove('hidden');
+    if (typeof SFX !== 'undefined') SFX.notifyChime();
+});
+
+function approveSpectate() {
+    document.getElementById('spectate-request-modal').classList.add('hidden');
+    socket.emit('approveSpectate', { requesterId: currentSpectateRequesterId });
+}
+
+function rejectSpectate() {
+    document.getElementById('spectate-request-modal').classList.add('hidden');
+    socket.emit('rejectSpectate', { requesterId: currentSpectateRequesterId });
+}
+
+function requestSpectate(seatIndex) {
+    socket.emit('requestSpectateTarget', { seatIndex });
+    // show some feedback toast or button text changes via listener
+}
+
+socket.on('spectateTargetSent', () => {
+    showLobbyError('已发送观战申请，等待对方同意...');
+});
+
+socket.on('spectateTargetApproved', () => {
+    showLobbyError('已切换至目标视角！');
+});
+
+socket.on('spectateTargetRejected', () => {
+    showLobbyError('对方拒绝了你的观战申请。');
+});
+
 function showRoomWaiting(code) {
     document.getElementById('lobby').classList.add('hidden');
     document.getElementById('room-waiting').classList.remove('hidden');
@@ -461,7 +497,15 @@ function renderAllPlayers() {
 
         const isMe = (seatIndex === gameState.mySeatIndex);
         const playerName = (gameState.playerNames && gameState.playerNames[seatIndex]) || `玩家${seatIndex + 1}`;
-        const displayLabel = isMe ? `${playerName} (你)` : playerName;
+        let displayLabel = isMe ? `${playerName} (你)` : playerName;
+
+        if (gameState.isSpectator) {
+            if (gameState.spectatingTargetSeat === seatIndex) {
+                displayLabel += ` <span style="font-size:12px; color:#ffb74d;">(当前视角)</span>`;
+            } else {
+                displayLabel += ` <button class="btn" onclick="requestSpectate(${seatIndex})" style="padding:2px 6px; font-size:10px; margin-left:6px; background:rgba(255,152,0,0.3); border:1px solid #ff9800;">👁️ 申请视角</button>`;
+            }
+        }
 
         div.innerHTML = `
             <div class="info">
