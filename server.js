@@ -220,7 +220,8 @@ function sanitizeGameStateForPlayer(room, socketId) {
         targetLoserRanks: gs.targetLoserRanks,
         totalPlayers: gs.totalPlayers,
         turnCircle: gs.turnCircle,
-        mySeatIndex: mySeatIndex,
+        mySeatIndex: gs.turnCircle.includes(mySeatIndex) ? mySeatIndex : -1,
+        isSpectator: !gs.turnCircle.includes(mySeatIndex),
         currentPassFrom: gs.passQueue.length > 0 ? gs.passQueue[0].from : null,
         currentPassTo: gs.passQueue.length > 0 ? gs.passQueue[0].to : null,
         message: gs.message || '',
@@ -584,12 +585,7 @@ io.on('connection', (socket) => {
             const reqSocket = io.sockets.sockets.get(requesterId);
             if (reqSocket) reqSocket.join(room.code);
             io.to(requesterId).emit('joinApproved', { code: room.code });
-            // If game is running, init their game data
-            if (room.gameState) {
-                room.gameState.players[seatIndex] = { cards: [], totalLosses: 0 };
-                room.gameState.totalPlayers = room.players.length;
-                room.gameState.turnCircle.push(seatIndex);
-            }
+            // Do NOT insert into current gameState. They will join properly in nextRound()
             broadcastRoomState(room);
             if (room.gameState) broadcastGameState(room);
         }
@@ -723,10 +719,19 @@ io.on('connection', (socket) => {
 
         // Reset for next round but keep totalLosses
         const gs = room.gameState;
+
+        // Sync new players
+        gs.totalPlayers = room.players.length;
+        gs.turnCircle = room.players.map(p => p.seatIndex);
+
         for (const seat of gs.turnCircle) {
-            gs.players[seat].cards = [];
-            gs.players[seat].handScore = 0;
-            gs.players[seat].handName = '';
+            if (!gs.players[seat]) {
+                gs.players[seat] = { cards: [], seatIndex: seat, handScore: 0, handName: '', totalLosses: 0 };
+            } else {
+                gs.players[seat].cards = [];
+                gs.players[seat].handScore = 0;
+                gs.players[seat].handName = '';
+            }
         }
         gs.showdownResult = null;
         promptRankSelection(room);
