@@ -142,7 +142,9 @@ function createRoom(roomCode, hostSocket, hostName) {
         players: [{ id: hostSocket.id, name: hostName, seatIndex: 0, isAI: false }],
         maxPlayers: 4,
         gameState: null,
-        started: false
+        started: false,
+        spectators: [],       // { id, name }
+        joinRequests: []      // { id, name }
     };
     return rooms[roomCode];
 }
@@ -157,6 +159,24 @@ function broadcastRoomState(room) {
             io.to(p.id).emit('roomUpdate', data);
         }
     });
+    // Also update spectators
+    (room.spectators || []).forEach(s => {
+        io.to(s.id).emit('roomUpdate', data);
+    });
+    // Update room list for all lobby users
+    broadcastRoomList();
+}
+
+function broadcastRoomList() {
+    const list = Object.values(rooms).map(r => ({
+        code: r.code,
+        playerCount: r.players.length,
+        maxPlayers: r.maxPlayers,
+        spectatorCount: (r.spectators || []).length,
+        started: r.started,
+        hostName: (r.players.find(p => p.id === r.hostId) || {}).name || 'unknown'
+    }));
+    io.emit('roomList', list);
 }
 
 function getPlayerName(room, seatIndex) {
@@ -216,6 +236,46 @@ function broadcastGameState(room) {
             io.to(p.id).emit('gameStateUpdate', state);
         }
     });
+    // Send spectator view (showdown-like: all cards visible)
+    (room.spectators || []).forEach(s => {
+        const state = sanitizeGameStateForSpectator(room);
+        io.to(s.id).emit('gameStateUpdate', state);
+    });
+}
+
+function sanitizeGameStateForSpectator(room) {
+    const gs = room.gameState;
+    if (!gs) return null;
+    const playersData = {};
+    for (const [seatStr, pData] of Object.entries(gs.players)) {
+        playersData[seatStr] = {
+            cards: pData.cards,
+            totalLosses: pData.totalLosses || 0,
+            handName: pData.handName || ''
+        };
+    }
+    const playerNames = {};
+    room.players.forEach(p => { playerNames[p.seatIndex] = p.name; });
+    return {
+        phase: gs.phase,
+        players: playersData,
+        playerNames,
+        hostId: room.hostId,
+        currentRule: gs.currentRule,
+        gameMultiplier: gs.gameMultiplier,
+        loserId: gs.loserId,
+        finalPlayerId: gs.finalPlayerId,
+        targetLoserRanks: gs.targetLoserRanks,
+        totalPlayers: gs.totalPlayers,
+        turnCircle: gs.turnCircle,
+        mySeatIndex: -1,
+        isSpectator: true,
+        currentPassFrom: gs.passQueue.length > 0 ? gs.passQueue[0].from : null,
+        currentPassTo: gs.passQueue.length > 0 ? gs.passQueue[0].to : null,
+        message: gs.message || '',
+        showdownResult: gs.phase === 'SHOWDOWN' ? gs.showdownResult : null,
+        ruleNames: { 'SAN_PI': '三匹', 'TEN_HALF': '10点半', 'LAO_YAN_CAI': '捞腌菜' }
+    };
 }
 
 function startGame(room) {
@@ -434,6 +494,19 @@ function applyRule(room, rule) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    // Send room list on connect
+    socket.on('requestRoomList', () => {
+        const list = Object.values(rooms).map(r => ({
+            code: r.code,
+            playerCount: r.players.length,
+            maxPlayers: r.maxPlayers,
+            spectatorCount: (r.spectators || []).length,
+            started: r.started,
+            hostName: (r.players.find(p => p.id === r.hostId) || {}).name || 'unknown'
+        }));
+        socket.emit('roomList', list);
+    });
+
     socket.on('createRoom', ({ name, maxPlayers }) => {
         const code = Math.random().toString(36).substring(2, 6).toUpperCase();
         const room = createRoom(code, socket, name);
@@ -441,6 +514,93 @@ io.on('connection', (socket) => {
         socket.join(code);
         socket.emit('roomCreated', { code });
         broadcastRoomState(room);
+    });
+
+    // ---- SPECTATE ----
+    socket.on('spectateRoom', ({ code, name }) => {
+        const room = getRoom(code);
+        if (!room) { socket.emit('error', { msg: '房间不存在！' }); return; }
+        room.spectators = room.spectators || [];
+        room.spectators.push({ id: socket.id, name: name || '观众' });
+        socket.join(code);
+        socket.emit('spectateStarted', { code });
+        broadcastRoomState(room);
+        if (room.gameState) {
+            const state = sanitizeGameStateForSpectator(room);
+            socket.emit('gameStateUpdate', state);
+        }
+    });
+
+    // ---- JOIN REQUEST (mid-game) ----
+    socket.on('requestJoinGame', ({ code, name }) => {
+        const room = getRoom(code);
+        if (!room) { socket.emit('error', { msg: '房间不存在！' }); return; }
+        room.joinRequests = room.joinRequests || [];
+        // Prevent duplicate
+        if (room.joinRequests.some(r => r.id === socket.id)) { socket.emit('error', { msg: '已经发送过申请，请等待房主审批' }); return; }
+        room.joinRequests.push({ id: socket.id, name });
+        socket.emit('joinRequestSent', { code });
+        // Notify host
+        const aiPlayers = room.players.filter(p => p.isAI);
+        io.to(room.hostId).emit('joinRequest', {
+            requesterId: socket.id,
+            requesterName: name,
+            aiPlayers: aiPlayers.map(p => ({ seatIndex: p.seatIndex, name: p.name })),
+            currentCount: room.players.length,
+            maxPlayers: room.maxPlayers
+        });
+    });
+
+    // ---- HOST APPROVES JOIN ----
+    socket.on('approveJoin', ({ requesterId, replaceSeatIndex, expandMax }) => {
+        const room = findRoomBySocket(socket.id);
+        if (!room || room.hostId !== socket.id) return;
+        room.joinRequests = room.joinRequests || [];
+        const reqIdx = room.joinRequests.findIndex(r => r.id === requesterId);
+        if (reqIdx === -1) return;
+        const req = room.joinRequests.splice(reqIdx, 1)[0];
+
+        // Remove from spectators if they were spectating
+        room.spectators = (room.spectators || []).filter(s => s.id !== requesterId);
+
+        if (replaceSeatIndex !== undefined && replaceSeatIndex !== null) {
+            // Replace an AI player
+            const aiPlayer = room.players.find(p => p.seatIndex === replaceSeatIndex && p.isAI);
+            if (aiPlayer) {
+                aiPlayer.id = requesterId;
+                aiPlayer.name = req.name;
+                aiPlayer.isAI = false;
+                const reqSocket = io.sockets.sockets.get(requesterId);
+                if (reqSocket) reqSocket.join(room.code);
+                io.to(requesterId).emit('joinApproved', { code: room.code });
+                broadcastRoomState(room);
+                if (room.gameState) broadcastGameState(room);
+            }
+        } else if (expandMax) {
+            // Expand max players and add as new player
+            room.maxPlayers = Math.max(room.maxPlayers, room.players.length + 1);
+            const seatIndex = room.players.length;
+            room.players.push({ id: requesterId, name: req.name, seatIndex, isAI: false });
+            const reqSocket = io.sockets.sockets.get(requesterId);
+            if (reqSocket) reqSocket.join(room.code);
+            io.to(requesterId).emit('joinApproved', { code: room.code });
+            // If game is running, init their game data
+            if (room.gameState) {
+                room.gameState.players[seatIndex] = { cards: [], totalLosses: 0 };
+                room.gameState.totalPlayers = room.players.length;
+                room.gameState.turnCircle.push(seatIndex);
+            }
+            broadcastRoomState(room);
+            if (room.gameState) broadcastGameState(room);
+        }
+    });
+
+    // ---- HOST REJECTS JOIN ----
+    socket.on('rejectJoin', ({ requesterId }) => {
+        const room = findRoomBySocket(socket.id);
+        if (!room || room.hostId !== socket.id) return;
+        room.joinRequests = (room.joinRequests || []).filter(r => r.id !== requesterId);
+        io.to(requesterId).emit('joinRejected');
     });
 
     socket.on('joinRoom', ({ code, name }) => {
@@ -614,6 +774,7 @@ io.on('connection', (socket) => {
             room.players.forEach((p, i) => p.seatIndex = i);
             if (room.players.filter(p => !p.isAI).length === 0) {
                 delete rooms[room.code];
+                broadcastRoomList();
             } else {
                 if (room.hostId === socket.id && room.players.length > 0) {
                     const newHost = room.players.find(p => !p.isAI);
@@ -622,12 +783,26 @@ io.on('connection', (socket) => {
                 broadcastRoomState(room);
             }
         }
+
+        // Also remove from spectators
+        const specRoom = findSpectatorRoom(socket.id);
+        if (specRoom) {
+            specRoom.spectators = (specRoom.spectators || []).filter(s => s.id !== socket.id);
+            broadcastRoomState(specRoom);
+        }
     });
 });
 
 function findRoomBySocket(socketId) {
     for (const code of Object.keys(rooms)) {
         if (rooms[code].players.some(p => p.id === socketId)) return rooms[code];
+    }
+    return null;
+}
+
+function findSpectatorRoom(socketId) {
+    for (const code of Object.keys(rooms)) {
+        if ((rooms[code].spectators || []).some(s => s.id === socketId)) return rooms[code];
     }
     return null;
 }

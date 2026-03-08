@@ -30,7 +30,10 @@ function initUIRefs() {
     UI.btnAction = document.getElementById('btn-action');
 }
 
-socket.on('connect', () => { mySocketId = socket.id; });
+socket.on('connect', () => {
+    mySocketId = socket.id;
+    socket.emit('requestRoomList');
+});
 
 // Auto-fill room code from URL ?room=XXXX and restore cached nickname
 (function initLobby() {
@@ -57,14 +60,42 @@ function createRoom() {
     socket.emit('createRoom', { name, maxPlayers });
 }
 
-function joinRoom() {
+function joinRoom(overrideCode) {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { showLobbyError('请输入你的昵称！'); return; }
     localStorage.setItem('pass_card_nickname', name);
-    const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+    const code = overrideCode || document.getElementById('room-code-input').value.trim().toUpperCase();
     if (!code) { showLobbyError('请输入房间号！'); return; }
     socket.emit('joinRoom', { code, name });
 }
+
+function spectateRoom(code) {
+    const name = document.getElementById('player-name').value.trim();
+    if (!name) { showLobbyError('请输入你的昵称！'); return; }
+    localStorage.setItem('pass_card_nickname', name);
+    socket.emit('spectateRoom', { code, name });
+}
+
+// ==== ROOM LIST ====
+socket.on('roomList', (list) => {
+    const container = document.getElementById('room-list');
+    if (!container) return;
+    if (list.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); text-align:center; font-size:13px;">暂无房间</p>';
+        return;
+    }
+    container.innerHTML = list.map(r => {
+        const btn = r.started
+            ? `<button class="btn" onclick="spectateRoom('${r.code}')" style="padding:4px 8px; font-size:12px; background:linear-gradient(135deg,#f59e0b,#d97706);">👀 观战</button>`
+            : `<button class="btn" onclick="joinRoom('${r.code}')" style="padding:4px 8px; font-size:12px; background:linear-gradient(135deg,#38bdf8,#0284c7);">👉 加入</button>`;
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:4px; margin-bottom:6px; border:1px solid rgba(255,255,255,0.1);">
+                <span style="font-size:13px; color:var(--text-primary);"><strong style="color:var(--accent-info); letter-spacing:1px;">${r.code}</strong> (${r.playerCount}/${r.maxPlayers}人) - 房主: ${r.hostName}</span>
+                ${btn}
+            </div>
+        `;
+    }).join('');
+});
 
 function showLobbyError(msg) {
     document.getElementById('lobby-error').textContent = msg;
@@ -91,6 +122,85 @@ socket.on('roomJoined', ({ code }) => {
     isHost = false;
     showRoomWaiting(code);
     if (typeof SFX !== 'undefined') SFX.notifyChime();
+});
+
+socket.on('spectateStarted', ({ code }) => {
+    currentRoom = code;
+    isHost = false;
+    document.getElementById('lobby').classList.add('hidden');
+    document.getElementById('room-waiting').classList.add('hidden');
+    document.getElementById('game-table').classList.remove('hidden');
+    document.getElementById('spectator-banner').classList.remove('hidden');
+    const roomCodeEl = document.getElementById('game-room-code');
+    if (roomCodeEl) roomCodeEl.textContent = currentRoom;
+});
+
+// ==== JOIN REQUEST FLOW ====
+function requestJoinGame() {
+    const name = document.getElementById('player-name').value.trim();
+    if (!name) return;
+    if (!currentRoom) return;
+    socket.emit('requestJoinGame', { code: currentRoom, name });
+    document.getElementById('spectator-join-btn').textContent = '申请中...';
+    document.getElementById('spectator-join-btn').disabled = true;
+}
+
+socket.on('joinRequestSent', () => {
+    // optional feedback
+});
+
+socket.on('joinRequest', (data) => {
+    // Only host receives this
+    document.getElementById('join-request-modal').classList.remove('hidden');
+    document.getElementById('jr-name').textContent = data.requesterName;
+
+    const optsDiv = document.getElementById('jr-options');
+    let html = `<p style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">请选择如何让玩家加入：</p>`;
+
+    // Option 1: Replace AI
+    if (data.aiPlayers && data.aiPlayers.length > 0) {
+        data.aiPlayers.forEach(ai => {
+            html += `<button class="btn" onclick="approveJoin('${data.requesterId}', ${ai.seatIndex}, false)" style="display:block; width:100%; margin-bottom:8px; padding:8px; font-size:13px; background:linear-gradient(135deg,#34d399,#059669);">替换 AI: ${ai.name}</button>`;
+        });
+    }
+
+    // Option 2: Expand Max Players (add as new)
+    if (data.currentCount >= data.maxPlayers) {
+        html += `<button class="btn" onclick="approveJoin('${data.requesterId}', null, true)" style="display:block; width:100%; margin-bottom:8px; padding:8px; font-size:13px; background:linear-gradient(135deg,#38bdf8,#0284c7);">增加座位上限 (${data.maxPlayers}->${data.currentCount + 1})</button>`;
+    } else {
+        html += `<button class="btn" onclick="approveJoin('${data.requesterId}', null, true)" style="display:block; width:100%; margin-bottom:8px; padding:8px; font-size:13px; background:linear-gradient(135deg,#38bdf8,#0284c7);">直接新增玩家</button>`;
+    }
+
+    optsDiv.innerHTML = html;
+
+    const rejectBtn = document.getElementById('jr-reject-btn');
+    rejectBtn.onclick = () => { rejectJoin(data.requesterId); };
+    if (typeof SFX !== 'undefined') SFX.notifyChime();
+});
+
+function approveJoin(requesterId, replaceSeatIndex, expandMax) {
+    document.getElementById('join-request-modal').classList.add('hidden');
+    socket.emit('approveJoin', { requesterId, replaceSeatIndex, expandMax });
+}
+
+function rejectJoin(requesterId) {
+    document.getElementById('join-request-modal').classList.add('hidden');
+    socket.emit('rejectJoin', { requesterId });
+}
+
+socket.on('joinApproved', ({ code }) => {
+    currentRoom = code;
+    document.getElementById('spectator-banner').classList.add('hidden');
+    if (typeof SFX !== 'undefined') SFX.notifyChime();
+});
+
+socket.on('joinRejected', () => {
+    alert('房主拒绝了您的加入申请。');
+    const btn = document.getElementById('spectator-join-btn');
+    if (btn) {
+        btn.textContent = '申请加入游戏';
+        btn.disabled = false;
+    }
 });
 
 socket.on('error', ({ msg }) => {
@@ -193,6 +303,14 @@ socket.on('gameStateUpdate', (state) => {
     // Sync host status from server
     if (state.hostId) {
         isHost = (state.hostId === mySocketId);
+    }
+
+    // Process spectator mode
+    if (state.isSpectator) {
+        document.getElementById('spectator-banner').classList.remove('hidden');
+        document.getElementById('room-waiting').classList.add('hidden');
+    } else {
+        document.getElementById('spectator-banner').classList.add('hidden');
     }
 
     // Show room code on the table
