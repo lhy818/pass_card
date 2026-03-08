@@ -3,6 +3,7 @@ const socket = io();
 
 let mySocketId = null;
 let currentRoom = null;
+let currentRoomState = null;
 let isHost = false;
 let gameState = null; // sanitized state from server
 let selectedCardIndex = -1;
@@ -108,6 +109,54 @@ function showRules() {
 }
 function closeRules() {
     document.getElementById('rules-modal').classList.add('hidden');
+}
+
+function showPlayerListModal() {
+    if (!currentRoomState) return;
+
+    const playersDiv = document.getElementById('pl-players-container');
+    const specsDiv = document.getElementById('pl-spectators-container');
+
+    if (playersDiv) playersDiv.innerHTML = '';
+    if (specsDiv) specsDiv.innerHTML = '';
+
+    currentRoomState.players.forEach(p => {
+        let label = p.name;
+        if (p.isAI) label += ' 🤖';
+        if (p.id === currentRoomState.hostId) label += ' 👑';
+        if (p.id === mySocketId) label += ' (你)';
+
+        if (playersDiv) {
+            playersDiv.innerHTML += `
+                <div style="background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); font-size:13px; color:var(--text-primary);">
+                    🪑 座位 ${p.seatIndex + 1}: <strong style="color:var(--accent-info);">${label}</strong>
+                </div>
+            `;
+        }
+    });
+
+    if (!currentRoomState.spectators || currentRoomState.spectators.length === 0) {
+        if (specsDiv) specsDiv.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center;">暂无观众</div>';
+    } else {
+        currentRoomState.spectators.forEach(s => {
+            let label = s.name;
+            if (s.id === mySocketId) label += ' (你)';
+            if (specsDiv) {
+                specsDiv.innerHTML += `
+                    <div style="background:rgba(255,152,0,0.1); padding:8px 12px; border-radius:4px; border:1px solid rgba(255,152,0,0.3); font-size:13px; color:#ffb74d;">
+                        👀 <strong style="color:#ffb74d;">${label}</strong>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    document.getElementById('player-list-modal').classList.remove('hidden');
+    if (typeof SFX !== 'undefined') SFX.buttonClick();
+}
+
+function closePlayerListModal() {
+    document.getElementById('player-list-modal').classList.add('hidden');
 }
 
 socket.on('roomCreated', ({ code }) => {
@@ -239,6 +288,7 @@ function copyShareLink() {
 
 socket.on('roomUpdate', (data) => {
     currentRoom = data.code;
+    currentRoomState = data;
     isHost = (data.hostId === mySocketId);
 
     // Play sound when a new player joins

@@ -153,7 +153,14 @@ function getRoom(code) { return rooms[code] || null; }
 
 function broadcastRoomState(room) {
     const publicPlayers = room.players.map(p => ({ name: p.name, seatIndex: p.seatIndex, isAI: p.isAI, id: p.id }));
-    const data = { code: room.code, hostId: room.hostId, players: publicPlayers, maxPlayers: room.maxPlayers, started: room.started };
+    const data = {
+        code: room.code,
+        hostId: room.hostId,
+        players: publicPlayers,
+        spectators: room.spectators || [],
+        maxPlayers: room.maxPlayers,
+        started: room.started
+    };
     room.players.forEach(p => {
         if (!p.isAI) {
             io.to(p.id).emit('roomUpdate', data);
