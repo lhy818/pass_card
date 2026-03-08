@@ -111,37 +111,24 @@ function closeRules() {
     document.getElementById('rules-modal').classList.add('hidden');
 }
 
-function showPlayerListModal() {
+function renderSpectatorList() {
     if (!currentRoomState) return;
-
-    const playersDiv = document.getElementById('pl-players-container');
-    const specsDiv = document.getElementById('pl-spectators-container');
-
-    if (playersDiv) playersDiv.innerHTML = '';
-    if (specsDiv) specsDiv.innerHTML = '';
+    const container = document.getElementById('on-screen-spectators');
+    if (!container) return;
 
     if (!currentRoomState.spectators || currentRoomState.spectators.length === 0) {
-        if (specsDiv) specsDiv.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center;">暂无观众</div>';
-    } else {
-        currentRoomState.spectators.forEach(s => {
-            let label = s.name;
-            if (s.id === mySocketId) label += ' (你)';
-            if (specsDiv) {
-                specsDiv.innerHTML += `
-                    <div style="background:rgba(255,152,0,0.1); padding:8px 12px; border-radius:4px; border:1px solid rgba(255,152,0,0.3); font-size:13px; color:#ffb74d;">
-                        👀 <strong style="color:#ffb74d;">${label}</strong>
-                    </div>
-                `;
-            }
-        });
+        container.innerHTML = '';
+        return;
     }
 
-    document.getElementById('player-list-modal').classList.remove('hidden');
-    if (typeof SFX !== 'undefined') SFX.buttonClick();
-}
+    let html = '';
+    currentRoomState.spectators.forEach(s => {
+        let label = s.name;
+        if (s.id === mySocketId) label += ' (你)';
+        html += `<div style="background:rgba(255,152,0,0.1); padding:2px 6px; border-radius:4px; border:1px solid rgba(255,152,0,0.3); color:#ffb74d;">👀 ${label}</div>`;
+    });
 
-function closePlayerListModal() {
-    document.getElementById('player-list-modal').classList.add('hidden');
+    container.innerHTML = html;
 }
 
 socket.on('roomCreated', ({ code }) => {
@@ -318,6 +305,8 @@ socket.on('roomUpdate', (data) => {
         if (typeof SFX !== 'undefined') SFX.notifyChime();
     }
     lastRoomPlayerCount = newCount;
+
+    renderSpectatorList();
 
     const container = document.getElementById('room-players-list');
     container.innerHTML = '';

@@ -210,11 +210,9 @@
         ">
             房间 <strong id="game-room-code"
                 style="color: var(--accent-info); font-size: 16px; letter-spacing: 3px;"></strong>
-            <button onclick="showPlayerListModal()" class="btn" style="
-                margin-left: 10px; padding: 2px 8px; font-size: 12px;
-                background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-                border: 1px solid var(--glass-border); color: var(--text-muted);
-            ">👀 观众列表</button>
+            <div id="on-screen-spectators"
+                style="margin-top: 8px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+            </div>
         </div>
 
         <!-- Spectator Banner -->
@@ -286,33 +284,7 @@
         <div id="players-container"></div>
     </div>
 
-    <!-- ==================== PLAYER LIST MODAL ==================== -->
-    <div id="player-list-modal" class="hidden" style="
-        position:fixed; inset:0; z-index:200;
-        background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-        display:flex; justify-content:center; align-items:center;
-    " onclick="if(event.target===this)closePlayerListModal()">
-        <div style="
-            background:var(--glass-bg); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
-            border:1px solid var(--glass-border); border-radius:var(--radius-lg);
-            padding:32px; max-width:420px; width:90%; max-height:80vh; overflow-y:auto;
-            box-shadow:0 24px 80px rgba(0,0,0,0.5);
-            animation: lobby-enter 0.4s cubic-bezier(0.16,1,0.3,1) both;
-        ">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="margin:0; color:var(--accent-primary);">👀 观众列表</h3>
-                <button onclick="closePlayerListModal()"
-                    style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; padding:4px 8px;">✕</button>
-            </div>
 
-            <div>
-                <h4
-                    style="color:var(--text-muted); font-size:14px; margin-bottom:10px; border-bottom:1px solid var(--glass-border); padding-bottom:6px;">
-                    正在观战 👀</h4>
-                <div id="pl-spectators-container" style="display:flex; flex-direction:column; gap:8px;"></div>
-            </div>
-        </div>
-    </div>
 
     <!-- ==================== SPECTATE REQUEST MODAL ==================== -->
     <div id="spectate-request-modal" class="hidden" style="
