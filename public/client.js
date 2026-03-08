@@ -120,21 +120,6 @@ function showPlayerListModal() {
     if (playersDiv) playersDiv.innerHTML = '';
     if (specsDiv) specsDiv.innerHTML = '';
 
-    currentRoomState.players.forEach(p => {
-        let label = p.name;
-        if (p.isAI) label += ' 🤖';
-        if (p.id === currentRoomState.hostId) label += ' 👑';
-        if (p.id === mySocketId) label += ' (你)';
-
-        if (playersDiv) {
-            playersDiv.innerHTML += `
-                <div style="background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); font-size:13px; color:var(--text-primary);">
-                    🪑 座位 ${p.seatIndex + 1}: <strong style="color:var(--accent-info);">${label}</strong>
-                </div>
-            `;
-        }
-    });
-
     if (!currentRoomState.spectators || currentRoomState.spectators.length === 0) {
         if (specsDiv) specsDiv.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center;">暂无观众</div>';
     } else {
